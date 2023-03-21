@@ -2,15 +2,22 @@
 
 # Yolo detection with on-device decoding
 
-Run model using this command:
+###### Run model using this command:
 
+```
 python3 yolo_odl_detection.py -m yolov7appleorangestrawberrytomato_openvino_2021.4_6shave.blob --config yolov7appleorangestrawberrytomato.json
+```
 
-Run pipeline graph using this command:
+###### Pipeline Graph (Visualize DepthAI pipeline)
 
+1. Install pip package -> `python3 -m pip install git+https://github.com/geaxgx/depthai_pipeline_graph.git`
+2. Run pipeline graph using this command:
+
+```
 pipeline_graph run "python3 still_image_yolo_detection.py -m yolov7appleorangestrawberrytomato_openvino_2021.4_6shave.blob --config yolov7appleorangestrawberrytomato.json"
+```
 
-## Usage
+## Usage of the `still_yolo_odl_detection.py` script
 
 1. Install requirements
    ```python
