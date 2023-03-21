@@ -1,11 +1,8 @@
 import cv2
 import depthai as dai
-import time
 from pathlib import Path
-from PIL import Image
 import numpy as np
 import argparse
-import sys
 import json
 
 # parse arguments
@@ -57,6 +54,7 @@ blue = cv2.imread("blue.jpeg")
 # Create pipeline
 pipeline = dai.Pipeline()
 
+# Create ImageManip node
 manip = pipeline.create(dai.node.ImageManip)
 manip.initialConfig.setResize(640, 640)
 manip.initialConfig.setFrameType(dai.ImgFrame.Type.BGR888p)
@@ -68,13 +66,10 @@ xinCaptureCommand.setStreamName("capture")
 
 # Create Camera node and give its properties
 camRGB = pipeline.create(dai.node.ColorCamera)
-# camRGB.setStillSize(640, 640)
-# camRGB.setPreviewSize(640, 640)
-# camRGB.setVideoSize(640, 640)
-# camRGB.setInterleaved(False)
 camRGB.setColorOrder(dai.ColorCameraProperties.ColorOrder.RGB)
 camRGB.setFp16(True)
 detectionNetwork = pipeline.create(dai.node.YoloDetectionNetwork)
+
 # Create output node for neural network
 nnOut = pipeline.create(dai.node.XLinkOut)
 nnOut.setStreamName("nn")
@@ -95,18 +90,13 @@ detectionNetwork.setNumInferenceThreads(2)
 detectionNetwork.input.setBlocking(False)
 
 # Linking
-# manip.out.link(detectionNetwork.input)
-# camRGB.still.link(detectionNetwork.input)
 
 # Link output of xinCaptureCommand to camera input control
 xinCaptureCommand.out.link(camRGB.inputControl)
 
-# Link output of camera to input of xlinkout to send to device
-# camRGB.still.link(outStillRGB.input)
-
-# camRGB.still.link(detectionNetwork.input)
 camRGB.still.link(manip.inputImage)
 manip.out.link(detectionNetwork.input)
+
 # Link output of detectionNetwork to camera input
 detectionNetwork.passthrough.link(outStillRGB.input)
 
@@ -115,10 +105,6 @@ detectionNetwork.out.link(nnOut.input)
 
 # Connect to device and start the pipeline
 with dai.Device(pipeline) as device:
-    # Set debugging level
-    # device.setLogLevel(dai.LogLevel.DEBUG)
-    # device.setLogOutputLevel(dai.LogLevel.DEBUG)
-
     print(f"dnet: {detectionNetwork.getCoordinateSize()}")
     # Create input queue to device, that receives capture command
     captureInputQueue = device.getInputQueue("capture")
@@ -141,18 +127,14 @@ with dai.Device(pipeline) as device:
     # Make sure the destination path is present before starting
     rgbDirName = "rgb_data"
     Path(rgbDirName).mkdir(parents=True, exist_ok=True)
-    #Path(detectionDirName).mkdir(parents=True, exist_ok=True)
 
     # nn data, being the bounding box locations, are in <0..1> range - they need to be normalized with frame width/height
     def frameNorm(frame, bbox):
-        print("In frame norm")
         normVals = np.full(len(bbox), frame.shape[0])
         normVals[::2] = frame.shape[1]
         return (np.clip(np.array(bbox), 0, 1) * normVals).astype(int)
 
-    def displayFrame(name, frame, detections):
-        # print(frame)
-        print("Displaying frame:")
+    def displayFrameWithBB(name, frame, detections):
         color = (255, 0, 0)
         for detection in detections:
             bbox = frameNorm(frame, (detection.xmin, detection.ymin, detection.xmax, detection.ymax))
@@ -168,16 +150,19 @@ with dai.Device(pipeline) as device:
         stillFrame = stillQueue.tryGet()
 
         if stillFrame is not None:
-            print("Captured frame")
-            print(stillFrame.getHeight(), stillFrame.getWidth(), stillFrame.getType())
+            print("Captured frame: ", stillFrame.getHeight(), stillFrame.getWidth(), stillFrame.getType())
             frame = stillFrame.getCvFrame()
 
-            displayFrame("rgb", frame, detections)
+            # Display frame with bounding boxes (broken)
+            # displayFrameWithBB("rgb", frame, detections)
+
             # # Show still frame
             # cv2.imshow("frame", frame)
+
             # # Save still frame to file
-            # fName = f"{rgbDirName}/{int(time.time()*1000)}.jpeg"
-            # cv2.imwrite(fName, frame)
+            fName = f"still_image.jpeg"
+            cv2.imwrite(fName, frame)
+            print('still image frame saved to', fName)
     
         if inDet is not None:
             print("Detected objects:")
