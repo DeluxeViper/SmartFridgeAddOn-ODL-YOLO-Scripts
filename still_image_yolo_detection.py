@@ -133,6 +133,8 @@ with dai.Device(pipeline) as device:
     counter = 0
     color2 = (255, 255, 255)
     detectionDirName = "detection_data"
+
+    object_count = {'Orange': 0, 'Apple': 0, 'Strawberry': 0, 'Tomato': 0}
     
     cv2.imshow("blue", blue)
     
@@ -178,17 +180,29 @@ with dai.Device(pipeline) as device:
             # cv2.imwrite(fName, frame)
     
         if inDet is not None:
-            print("Detection:")
+            print("Detected objects:")
             detections = inDet.detections
             counter += 1
             for detection in detections:
-               print(labels[detection.label])
+               object_count[labels[detection.label]] += 1
+            print(object_count)
+
+            # Write to file
+            # fName = f"{dirName}/{int(time.time() * 1000)}.txt"
+            fName = "detected_objects.txt"
+            with open(fName, "wb") as f:
+                for k, v in object_count.items():
+                    b = bytes(f"{k} {v}\n", 'utf-8')
+                    f.write(b)
+                print('detection data saved to', fName)
 
         # Send capture command from host to device
         key = cv2.waitKey(1)
         if key == ord("q"):
             break
         elif key == ord('c'):
+            for detection in detections:
+               object_count[labels[detection.label]] = 0
             ctrl = dai.CameraControl()
             ctrl.setCaptureStill(True)
             captureInputQueue.send(ctrl)
