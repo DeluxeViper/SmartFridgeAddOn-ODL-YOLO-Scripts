@@ -4,6 +4,7 @@ from pathlib import Path
 import numpy as np
 import argparse
 import json
+import base64
 
 # parse arguments
 parser = argparse.ArgumentParser()
@@ -160,9 +161,17 @@ with dai.Device(pipeline) as device:
             # cv2.imshow("frame", frame)
 
             # # Save still frame to file
-            fName = f"still_image.jpeg"
-            cv2.imwrite(fName, frame)
-            print('still image frame saved to', fName)
+            fImageName = f"still_image.jpeg"
+            cv2.imwrite(fImageName, frame)
+
+            # Save still frame text to file
+            fImageTxtName = f"still_image.txt"
+            retval, buffer = cv2.imencode('.jpg', frame)
+            jpg_as_text = base64.b64encode(buffer)
+            with open(fImageTxtName, "wb") as f:
+                f.write(jpg_as_text)
+            print('still image frame saved to', fImageName)
+            
     
         if inDet is not None:
             print("Detected objects:")
